@@ -116,6 +116,14 @@ bool g_verbose = false;
 libusb_device_handle* g_usb_dev = NULL;
 int g_vid = 0, g_pid = 0;
 
+/* Function Definitions */
+void ensure_usb(void);
+void enable_mmc(void);
+void jz_set_data_length(unsigned long param);
+void bulk_transfer_out(void* data, int length);
+void mmc_write(uint32_t offset, uint32_t length, unsigned char* in);
+void jz_download(const char* filename, unsigned long load_addr);
+
 /* Utility functions */
 void die(const char* msg, ...)
 {
@@ -159,6 +167,25 @@ void open_usb(void)
         libusb_close(g_usb_dev);
         die("Could not claim interface: %d", ret);
     }
+}
+
+void jz_mmc_write(uint32_t offset, uint32_t length)
+{
+    ensure_usb();
+    enable_mmc();
+
+    printf("Writing %#x bytes to MMC offset %#x\n", length, offset);
+
+    unsigned char* buffer = malloc(length);
+    if (!buffer)
+        die("Failed to allocate memory for MMC write");
+
+    jz_set_data_length(length);
+    bulk_transfer_out(buffer, length);
+
+    mmc_write(offset, length, buffer);
+
+    free(buffer);
 }
 
 void ensure_usb(void)
@@ -216,7 +243,16 @@ void bulk_transfer_out(void* data, int length) {
   verbose("Transfer %d bytes from host to device", length);
   int xfered = 0;
   int ret = libusb_bulk_transfer(g_usb_dev, LIBUSB_ENDPOINT_OUT | 1,
-				 data, length, &xfered, 10000);
+				 data, length, &xfered, 60000);
+  if (ret == LIBUSB_ERROR_TIMEOUT) {
+    fprintf(stderr, "USB transfer timed out\n");
+  } else if (ret == LIBUSB_ERROR_PIPE) {
+    fprintf(stderr, "USB pipe error\n");
+  } else if (ret == LIBUSB_ERROR_NO_DEVICE) {
+    fprintf(stderr, "USB device disconnected\n");
+  } else {
+    fprintf(stderr, "USB transfer failed with error %d\n", ret);
+  }
   if(ret != 0)
     die("Transfer failed: %d", ret);
   if(xfered != length)
@@ -255,25 +291,37 @@ void jz_generic_out(uint8_t op,
     die("Request 0x%x failed, only transfered: %d", op, ret);
 }
 
-void jz_download(const char* filename)
+void jz_download(const char* filename, unsigned long load_addr)
 {
     FILE* f = fopen(filename, "rb");
-    if(f == NULL)
+    if (f == NULL)
         die("Can't open file '%s' for reading", filename);
 
     fseek(f, 0, SEEK_END);
     int length = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    void* data = malloc(length);
-    if(fread(data, length, 1, f) != 1)
-        die("Error reading data from file");
-    fclose(f);
+    const int chunk_size = 1024 * 1024; // 1 MB chunks
+    unsigned char* data = malloc(chunk_size);
 
-    jz_set_data_length(length);
-    bulk_transfer_out(data, length);
+    int remaining = length;
+    int offset = 0;
+
+    while (remaining > 0) {
+        int read_size = (remaining > chunk_size) ? chunk_size : remaining;
+        if (fread(data, 1, read_size, f) != read_size)
+            die("Error reading data from file");
+
+        jz_set_data_address(load_addr + offset);
+        jz_set_data_length(read_size);
+        bulk_transfer_out(data, read_size);
+
+        remaining -= read_size;
+        offset += read_size;
+    }
 
     free(data);
+    fclose(f);
 }
 
 void jz_get_ack() {
@@ -489,7 +537,7 @@ void run_stage1(const char* filename)
     if(s1_load_addr == 0 || s1_exec_addr == 0)
         die("No stage1 binary settings -- did you specify --cpu?");
     jz_set_data_address(s1_load_addr);
-    jz_download(filename);
+    jz_download(optarg, s2_load_addr);
     jz_program_start1(s1_exec_addr);
 }
 
@@ -498,7 +546,7 @@ void run_stage2(const char* filename)
     if(s2_load_addr == 0 || s2_exec_addr == 0)
         die("No stage2 binary settings -- did you specify --cpu?");
     jz_set_data_address(s2_load_addr);
-    jz_download(filename);
+    jz_download(optarg, s2_load_addr);
     jz_flush_caches();
     jz_program_start2(s2_exec_addr);
 }
@@ -574,7 +622,8 @@ int main(int argc, char* argv[])
         OPT_CPUINFO,
         OPT_START1, OPT_START2, OPT_FLUSH_CACHES,
         OPT_RENUMERATE, OPT_WAIT, OPT_SWAP_OTA,
-	OPT_FORCE_SWAP_OTA, OPT_DUMP_PARITION
+	OPT_FORCE_SWAP_OTA, OPT_DUMP_PARITION,
+	OPT_MMC_WRITE
     };
 
     static const struct option long_options[] = {
@@ -599,6 +648,7 @@ int main(int argc, char* argv[])
         {"swap-ota", no_argument, 0, OPT_SWAP_OTA},
         {"force-swap-ota", no_argument, 0, OPT_FORCE_SWAP_OTA},
         {"dump-partition", required_argument, 0, OPT_DUMP_PARITION},	
+	{"mmc-write", required_argument, 0, OPT_MMC_WRITE},
         {"help", no_argument, 0, 'h'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
@@ -679,7 +729,7 @@ int main(int argc, char* argv[])
             jz_upload(optarg, data_length);
             break;
         case 'd':
-            jz_download(optarg);
+	    jz_download(optarg, s2_load_addr);
             break;
         case OPT_START1:
             jz_program_start1(param);
@@ -708,6 +758,12 @@ int main(int argc, char* argv[])
         case OPT_DUMP_PARITION:
 	    if (partition_size <= 0)
 	      die("must provide a positive partition length with option --partition-size");
+        case OPT_MMC_WRITE:
+            param = strtoul(optarg, &end, 0);
+            if(*end)
+                die("Invalid argument '%s'", optarg);
+            jz_mmc_write(partition_offset, param);
+            break;
 
             verbose("Dump a partition to file");
 	    mmc_read_partition(partition_offset, partition_size, optarg);
