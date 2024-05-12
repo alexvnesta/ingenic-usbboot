@@ -31,101 +31,108 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define VR_GET_CPU_INFO     0
+#define VR_GET_CPU_INFO 0
 #define VR_SET_DATA_ADDRESS 1
-#define VR_SET_DATA_LENGTH  2
-#define VR_FLUSH_CACHES     3
-#define VR_PROGRAM_START1   4
-#define VR_PROGRAM_START2   5
-#define VR_GET_ACK              0x10
-#define VR_INIT                 0x11
-#define VR_WRITE                0x12
-#define VR_READ                 0x13
-#define VR_UPDATE_CFG           0x14
+#define VR_SET_DATA_LENGTH 2
+#define VR_FLUSH_CACHES 3
+#define VR_PROGRAM_START1 4
+#define VR_PROGRAM_START2 5
+#define VR_GET_ACK 0x10
+#define VR_INIT 0x11
+#define VR_WRITE 0x12
+#define VR_READ 0x13
+#define VR_UPDATE_CFG 0x14
 
-#define MAGIC_DEBUG     ('D' << 24) | ('B' << 16) | ('G' << 8) | 0
-#define MAGIC_MMC       ('M' << 24) | ('M' << 16) | ('C' << 8) | 0
-#define MAGIC_POLICY    ('P' << 24) | ('O' << 16) | ('L' << 8) | ('I' << 0)
+#define MAGIC_DEBUG ('D' << 24) | ('B' << 16) | ('G' << 8) | 0
+#define MAGIC_MMC ('M' << 24) | ('M' << 16) | ('C' << 8) | 0
+#define MAGIC_POLICY ('P' << 24) | ('O' << 16) | ('L' << 8) | ('I' << 0)
 
-typedef struct ParameterInfo {
-  uint32_t magic;
-  uint32_t size;
-  uint32_t data[0];
+typedef struct ParameterInfo
+{
+    uint32_t magic;
+    uint32_t size;
+    uint32_t data[0];
 } ParameterInfo;
 
-struct mmc_erase_range {
-  uint32_t start;
-  uint32_t end;
+struct mmc_erase_range
+{
+    uint32_t start;
+    uint32_t end;
 };
 
-typedef struct mmc_param {
-  int mmc_open_card;
-  int mmc_erase;
-  uint32_t mmc_erase_range_count;
-  uint32_t blob[59]; // don't care, not formatting
+typedef struct mmc_param
+{
+    int mmc_open_card;
+    int mmc_erase;
+    uint32_t mmc_erase_range_count;
+    uint32_t blob[59]; // don't care, not formatting
 } mmc_param;
 
-typedef struct debug_param {
-  uint32_t log_enabled;
-  uint32_t transfer_data_chk;
-  uint32_t write_back_chk;
-  uint32_t transfer_size;
-  uint32_t stage2_timeout;
+typedef struct debug_param
+{
+    uint32_t log_enabled;
+    uint32_t transfer_data_chk;
+    uint32_t write_back_chk;
+    uint32_t transfer_size;
+    uint32_t stage2_timeout;
 } debug_param;
 
-typedef struct policy_param {
-  int use_nand_mgr;
-  int use_nand_mtd;
-  int use_mmc0;
-  int use_mmc1;
-  int use_mmc2;
-  uint32_t use_sfc_nor;
-  uint32_t use_sfc_nand;
-  uint32_t use_spi_nand;
-  uint32_t use_spi_nor;
-  uint32_t offsets[32];
-} policy_param;;
-
+typedef struct policy_param
+{
+    int use_nand_mgr;
+    int use_nand_mtd;
+    int use_mmc0;
+    int use_mmc1;
+    int use_mmc2;
+    uint32_t use_sfc_nor;
+    uint32_t use_sfc_nand;
+    uint32_t use_spi_nand;
+    uint32_t use_spi_nor;
+    uint32_t offsets[32];
+} policy_param;
+;
 
 // burner commands
-typedef struct update_cmd {
-  uint32_t length;
-  uint32_t unused[9]; // pad to 40 bytes
+typedef struct update_cmd
+{
+    uint32_t length;
+    uint32_t unused[9]; // pad to 40 bytes
 } UpdateCmd;
 
-typedef struct write_cmd {
-  uint64_t partition;
-  uint32_t ops;
-  uint32_t offset;
-  uint32_t length;
-  uint32_t crc;
-  uint32_t unused[4];
+typedef struct write_cmd
+{
+    uint64_t partition;
+    uint32_t ops;
+    uint32_t offset;
+    uint32_t length;
+    uint32_t crc;
+    uint32_t unused[4];
 } WriteCmd;
 
-typedef struct read_cmd {
-  uint64_t partition;
-  uint32_t ops;
-  uint32_t offset;
-  uint32_t length;
-  uint32_t unused[5];
+typedef struct read_cmd
+{
+    uint64_t partition;
+    uint32_t ops;
+    uint32_t offset;
+    uint32_t length;
+    uint32_t unused[5];
 } ReadCmd;
-
 
 /* Global variables */
 bool g_verbose = false;
-libusb_device_handle* g_usb_dev = NULL;
+libusb_device_handle *g_usb_dev = NULL;
 int g_vid = 0, g_pid = 0;
 
 /* Function Definitions */
 void ensure_usb(void);
 void enable_mmc(void);
 void jz_set_data_length(unsigned long param);
-void bulk_transfer_out(void* data, int length);
-void mmc_write(uint32_t offset, uint32_t length, unsigned char* in);
-void jz_download(const char* filename, unsigned long load_addr);
+void bulk_transfer_out(void *data, int length);
+void mmc_write(uint32_t offset, uint32_t length, unsigned char *in);
+void jz_download(const char *filename, unsigned long load_addr);
 
 /* Utility functions */
-void die(const char* msg, ...)
+void die(const char *msg, ...)
 {
     va_list ap;
     va_start(ap, msg);
@@ -135,9 +142,9 @@ void die(const char* msg, ...)
     exit(1);
 }
 
-void verbose(const char* msg, ...)
+void verbose(const char *msg, ...)
 {
-    if(!g_verbose)
+    if (!g_verbose)
         return;
 
     va_list ap;
@@ -149,48 +156,57 @@ void verbose(const char* msg, ...)
 
 void open_usb(void)
 {
-    if(g_usb_dev) {
+    if (g_usb_dev)
+    {
         verbose("Closing USB device");
         libusb_close(g_usb_dev);
     }
 
-    if(g_vid == 0 || g_pid == 0)
+    if (g_vid == 0 || g_pid == 0)
         die("Can't open USB device: vendor/product ID not specified");
 
     verbose("Opening USB device %04x:%04x", g_vid, g_pid);
     g_usb_dev = libusb_open_device_with_vid_pid(NULL, g_vid, g_pid);
-    if(!g_usb_dev)
+    if (!g_usb_dev)
         die("Could not open USB device");
 
     int ret = libusb_claim_interface(g_usb_dev, 0);
-    if(ret != 0) {
+    if (ret != 0)
+    {
         libusb_close(g_usb_dev);
         die("Could not claim interface: %d", ret);
     }
 }
 
-void jz_mmc_write(uint32_t offset, uint32_t length)
+void mmc_write(uint32_t offset, uint32_t length, unsigned char *in)
 {
-    ensure_usb();
-    enable_mmc();
-
     printf("Writing %#x bytes to MMC offset %#x\n", length, offset);
+    WriteCmd *write = (WriteCmd *)malloc(sizeof(WriteCmd));
+    memset(write, 0, sizeof(WriteCmd));
+    write->ops = 0x020000; // mmc
+    write->offset = offset;
+    write->length = length;
 
-    unsigned char* buffer = malloc(length);
-    if (!buffer)
-        die("Failed to allocate memory for MMC write");
+    int ret = jz_generic_out(VR_WRITE, 0, (unsigned char *)write, sizeof(WriteCmd));
+    if (ret != sizeof(WriteCmd))
+    {
+        fprintf(stderr, "Failed to send write command\n");
+        free(write);
+        return;
+    }
+    free(write);
 
-    jz_set_data_length(length);
-    bulk_transfer_out(buffer, length);
-
-    mmc_write(offset, length, buffer);
-
-    free(buffer);
+    ret = bulk_transfer_out(in, length);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Failed to transfer data for writing\n");
+        return;
+    }
 }
 
 void ensure_usb(void)
 {
-    if(!g_usb_dev)
+    if (!g_usb_dev)
         open_usb();
 }
 
@@ -202,98 +218,108 @@ void jz_get_cpu_info(void)
 
     uint8_t buf[9];
     int ret = libusb_control_transfer(g_usb_dev,
-        LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
-        VR_GET_CPU_INFO, 0, 0, buf, 8, 1000);
-    if(ret != 0)
+                                      LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
+                                      VR_GET_CPU_INFO, 0, 0, buf, 8, 1000);
+    if (ret != 0)
         die("Can't get CPU info: %d", ret);
 
     buf[8] = 0;
     printf("CPU info: %s\n", buf);
 }
 
-void jz_upload(const char* filename, int length)
+void jz_upload(const char *filename, int length)
 {
-    if(length < 0)
+    if (length < 0)
         die("invalid upload length: %d", length);
 
     ensure_usb();
     verbose("Transfer %d bytes from device to host", length);
 
-    void* data = malloc(length);
+    void *data = malloc(length);
     int xfered = 0;
     int ret = libusb_bulk_transfer(g_usb_dev, LIBUSB_ENDPOINT_IN | 1,
                                    data, length, &xfered, 10000);
-    if(ret != 0)
+    if (ret != 0)
         die("Transfer failed: %d", ret);
-    if(xfered != length)
+    if (xfered != length)
         die("Transfer error: got %d bytes, expected %d", xfered, length);
 
-    FILE* f = fopen(filename, "wb");
-    if(f == NULL)
+    FILE *f = fopen(filename, "wb");
+    if (f == NULL)
         die("Can't open file '%s' for writing", filename);
 
-    if(fwrite(data, length, 1, f) != 1)
+    if (fwrite(data, length, 1, f) != 1)
         die("Error writing transfered data to file");
 
     fclose(f);
     free(data);
 }
 
-void bulk_transfer_out(void* data, int length) {
-  verbose("Transfer %d bytes from host to device", length);
-  int xfered = 0;
-  int ret = libusb_bulk_transfer(g_usb_dev, LIBUSB_ENDPOINT_OUT | 1,
-				 data, length, &xfered, 60000);
-  if (ret == LIBUSB_ERROR_TIMEOUT) {
-    fprintf(stderr, "USB transfer timed out\n");
-  } else if (ret == LIBUSB_ERROR_PIPE) {
-    fprintf(stderr, "USB pipe error\n");
-  } else if (ret == LIBUSB_ERROR_NO_DEVICE) {
-    fprintf(stderr, "USB device disconnected\n");
-  } else {
-    fprintf(stderr, "USB transfer failed with error %d\n", ret);
-  }
-  if(ret != 0)
-    die("Transfer failed: %d", ret);
-  if(xfered != length)
-    die("Transfer error: %d bytes recieved, expected %d", xfered, length);
+void bulk_transfer_out(void *data, int length)
+{
+    verbose("Transfer %d bytes from host to device", length);
+    int xfered = 0;
+    int ret = libusb_bulk_transfer(g_usb_dev, LIBUSB_ENDPOINT_OUT | 1,
+                                   data, length, &xfered, 60000);
+    if (ret == LIBUSB_ERROR_TIMEOUT)
+    {
+        fprintf(stderr, "USB transfer timed out\n");
+    }
+    else if (ret == LIBUSB_ERROR_PIPE)
+    {
+        fprintf(stderr, "USB pipe error\n");
+    }
+    else if (ret == LIBUSB_ERROR_NO_DEVICE)
+    {
+        fprintf(stderr, "USB device disconnected\n");
+    }
+    else
+    {
+        fprintf(stderr, "USB transfer failed with error %d\n", ret);
+    }
+    if (ret != 0)
+        die("Transfer failed: %d", ret);
+    if (xfered != length)
+        die("Transfer error: %d bytes recieved, expected %d", xfered, length);
 }
 
-#define jz_vendor_out_func(name, type, fmt) \
-  void name(unsigned long param) {   \
-        ensure_usb(); \
-        verbose("Issue " #type fmt, param); \
-        int ret = libusb_control_transfer(g_usb_dev, \
-            LIBUSB_ENDPOINT_OUT|LIBUSB_REQUEST_TYPE_VENDOR|LIBUSB_RECIPIENT_DEVICE, \
-            VR_##type, param >> 16, param & 0xffff, NULL, 0, 1000); \
-        if(ret != 0) \
-            die("Request " #type " failed: %d", ret); \
+#define jz_vendor_out_func(name, type, fmt)                                                                           \
+    void name(unsigned long param)                                                                                    \
+    {                                                                                                                 \
+        ensure_usb();                                                                                                 \
+        verbose("Issue " #type fmt, param);                                                                           \
+        int ret = libusb_control_transfer(g_usb_dev,                                                                  \
+                                          LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, \
+                                          VR_##type, param >> 16, param & 0xffff, NULL, 0, 1000);                     \
+        if (ret != 0)                                                                                                 \
+            die("Request " #type " failed: %d", ret);                                                                 \
     }
 
 jz_vendor_out_func(jz_set_data_address, SET_DATA_ADDRESS, " 0x%08lx")
-jz_vendor_out_func(jz_set_data_length, SET_DATA_LENGTH, " 0x%0lx")
-jz_vendor_out_func(_jz_flush_caches, FLUSH_CACHES, "")
-jz_vendor_out_func(jz_program_start1, PROGRAM_START1, " 0x%08lx")
-jz_vendor_out_func(jz_program_start2, PROGRAM_START2, " 0x%08lx")
-jz_vendor_out_func(jz_init, INIT, " 0x%08lx")  
+    jz_vendor_out_func(jz_set_data_length, SET_DATA_LENGTH, " 0x%0lx")
+        jz_vendor_out_func(_jz_flush_caches, FLUSH_CACHES, "")
+            jz_vendor_out_func(jz_program_start1, PROGRAM_START1, " 0x%08lx")
+                jz_vendor_out_func(jz_program_start2, PROGRAM_START2, " 0x%08lx")
+                    jz_vendor_out_func(jz_init, INIT, " 0x%08lx")
 #define jz_flush_caches() _jz_flush_caches(0)
 
-void jz_generic_out(uint8_t op,
-		    unsigned long param,
-		    unsigned char *data,
-		    uint16_t len) {
-  ensure_usb();
-  verbose("Issue 0x%x", op);
-  int ret = libusb_control_transfer(g_usb_dev,
-				    LIBUSB_ENDPOINT_OUT|LIBUSB_REQUEST_TYPE_VENDOR|LIBUSB_RECIPIENT_DEVICE,
-				    op, param >> 16, param & 0xffff, data, len, 1000);
-  if(ret != len)					     
-    die("Request 0x%x failed, only transfered: %d", op, ret);
+                        void jz_generic_out(uint8_t op,
+                                            unsigned long param,
+                                            unsigned char *data,
+                                            uint16_t len)
+{
+    ensure_usb();
+    verbose("Issue 0x%x", op);
+    int ret = libusb_control_transfer(g_usb_dev,
+                                      LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
+                                      op, param >> 16, param & 0xffff, data, len, 1000);
+    if (ret != len)
+        die("Request 0x%x failed, only transfered: %d", op, ret);
 }
 
-void jz_download(const char* filename, unsigned long load_addr)
+void jz_download(const char *filename, unsigned long load_addr)
 {
-    FILE* f = fopen(filename, "rb");
+    FILE *f = fopen(filename, "rb");
     if (f == NULL)
         die("Can't open file '%s' for reading", filename);
 
@@ -302,12 +328,13 @@ void jz_download(const char* filename, unsigned long load_addr)
     fseek(f, 0, SEEK_SET);
 
     const int chunk_size = 1024 * 1024; // 1 MB chunks
-    unsigned char* data = malloc(chunk_size);
+    unsigned char *data = malloc(chunk_size);
 
     int remaining = length;
     int offset = 0;
 
-    while (remaining > 0) {
+    while (remaining > 0)
+    {
         int read_size = (remaining > chunk_size) ? chunk_size : remaining;
         if (fread(data, 1, read_size, f) != read_size)
             die("Error reading data from file");
@@ -324,178 +351,213 @@ void jz_download(const char* filename, unsigned long load_addr)
     fclose(f);
 }
 
-void jz_get_ack() {
-  ensure_usb();
-  verbose("Issue VR_GET_ACK");
-  
-  uint8_t buf[4];
-  int ret = libusb_control_transfer(g_usb_dev,
-        LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
-        VR_GET_ACK, 0, 0, buf, 4, 1000);
-  if(ret != 4)
-    die("Can't get ACK: %d", ret);
+void jz_get_ack()
+{
+    ensure_usb();
+    verbose("Issue VR_GET_ACK");
+
+    uint8_t buf[4];
+    int ret = libusb_control_transfer(g_usb_dev,
+                                      LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
+                                      VR_GET_ACK, 0, 0, buf, 4, 1000);
+    if (ret != 4)
+        die("Can't get ACK: %d", ret);
 }
 
-void enable_mmc() {
-  ensure_usb();
+void enable_mmc()
+{
+    ensure_usb();
 
-  ParameterInfo *policy_param_info = (ParameterInfo*) malloc(sizeof(ParameterInfo) + sizeof(policy_param));
-  policy_param_info->magic = MAGIC_POLICY;
-  policy_param_info->size = sizeof(policy_param);
-  memset(policy_param_info->data, 0, sizeof(policy_param));
-  policy_param *policy_cfg = (policy_param*)policy_param_info->data;
-  policy_cfg->use_mmc0 = 1;
+    ParameterInfo *policy_param_info = (ParameterInfo *)malloc(sizeof(ParameterInfo) + sizeof(policy_param));
+    if (policy_param_info == NULL)
+    {
+        fprintf(stderr, "Failed to allocate memory for policy parameters\n");
+        return;
+    }
+    policy_param_info->magic = MAGIC_POLICY;
+    policy_param_info->size = sizeof(policy_param);
+    memset(policy_param_info->data, 0, sizeof(policy_param));
+    policy_param *policy_cfg = (policy_param *)policy_param_info->data;
+    policy_cfg->use_mmc0 = 1;
 
-  ParameterInfo *dbg_param_info = (ParameterInfo*) malloc(sizeof(ParameterInfo) + sizeof(debug_param));
-  dbg_param_info->magic = MAGIC_DEBUG;
-  dbg_param_info->size = sizeof(debug_param);
-  debug_param *dbg = (debug_param*)dbg_param_info->data;
-  dbg->log_enabled = 1;
-  dbg->transfer_data_chk = 0;
-  dbg->write_back_chk = 0;
-  dbg->transfer_size = 0;
-  dbg->stage2_timeout = 0;
+    ParameterInfo *dbg_param_info = (ParameterInfo *)malloc(sizeof(ParameterInfo) + sizeof(debug_param));
+    dbg_param_info->magic = MAGIC_DEBUG;
+    dbg_param_info->size = sizeof(debug_param);
+    debug_param *dbg = (debug_param *)dbg_param_info->data;
+    dbg->log_enabled = 1;
+    dbg->transfer_data_chk = 0;
+    dbg->write_back_chk = 0;
+    dbg->transfer_size = 0;
+    dbg->stage2_timeout = 0;
 
-  ParameterInfo *mmc_param_info = (ParameterInfo*) malloc(sizeof(ParameterInfo) + sizeof(mmc_param));
-  mmc_param_info->magic = MAGIC_MMC;
-  mmc_param_info->size = sizeof(mmc_param);
-  memset(mmc_param_info->data, 0, sizeof(mmc_param));
+    ParameterInfo *mmc_param_info = (ParameterInfo *)malloc(sizeof(ParameterInfo) + sizeof(mmc_param));
+    mmc_param_info->magic = MAGIC_MMC;
+    mmc_param_info->size = sizeof(mmc_param);
+    memset(mmc_param_info->data, 0, sizeof(mmc_param));
 
-  uint32_t data_size = 3 * 8 + policy_param_info->size + dbg_param_info->size + mmc_param_info->size;
-  unsigned char data[data_size];
-  unsigned char *p = data;
-  uint32_t offset = 0;
-  memcpy(p + offset, dbg_param_info, 4 + 4 + dbg_param_info->size);
-  offset += 4 + 4 + dbg_param_info->size;
-  memcpy(p + offset, mmc_param_info, 4 + 4 + mmc_param_info->size);
-  offset += 4 + 4 + mmc_param_info->size;
-  memcpy(p + offset, policy_param_info, 4 + 4 + policy_param_info->size);
+    uint32_t data_size = 3 * 8 + policy_param_info->size + dbg_param_info->size + mmc_param_info->size;
+    unsigned char data[data_size];
+    unsigned char *p = data;
+    uint32_t offset = 0;
+    memcpy(p + offset, dbg_param_info, 4 + 4 + dbg_param_info->size);
+    offset += 4 + 4 + dbg_param_info->size;
+    memcpy(p + offset, mmc_param_info, 4 + 4 + mmc_param_info->size);
+    offset += 4 + 4 + mmc_param_info->size;
+    memcpy(p + offset, policy_param_info, 4 + 4 + policy_param_info->size);
 
-  UpdateCmd *update = (UpdateCmd*) malloc(sizeof(UpdateCmd));
-  memset(update, 0, sizeof(UpdateCmd));
-  update->length = data_size;
+    UpdateCmd *update = (UpdateCmd *)malloc(sizeof(UpdateCmd));
+    memset(update, 0, sizeof(UpdateCmd));
+    update->length = data_size;
 
-  jz_generic_out(VR_UPDATE_CFG, 0, (unsigned char*)update, sizeof(UpdateCmd));
+    jz_generic_out(VR_UPDATE_CFG, 0, (unsigned char *)update, sizeof(UpdateCmd));
 
-  bulk_transfer_out(p, data_size);
+    bulk_transfer_out(p, data_size);
 
-  free(policy_param_info);
-  free(dbg_param_info);
-  free(mmc_param_info);
-  free(update);
-  
-  jz_get_ack();
-  jz_init(0);
-  jz_get_ack();
+    free(policy_param_info);
+    free(dbg_param_info);
+    free(mmc_param_info);
+    free(update);
+
+    jz_get_ack();
+    jz_init(0);
+    jz_get_ack();
 }
 
-void mmc_read(uint32_t offset, uint32_t length, unsigned char* out) {
-  ReadCmd *read = (ReadCmd*) malloc(sizeof(ReadCmd));
-  memset(read, 0, sizeof(ReadCmd));
-  read->ops = 0x020000; // mmc
-  read->offset = offset;
-  read->length = length;
-  
-  jz_generic_out(VR_READ, 0, (unsigned char*)read, sizeof(ReadCmd));
-  free(read);
+void mmc_read(uint32_t offset, uint32_t length, unsigned char *out)
+{
+    printf("Reading %#x bytes from MMC offset %#x\n", length, offset);
+    ReadCmd *read = (ReadCmd *)malloc(sizeof(ReadCmd));
+    memset(read, 0, sizeof(ReadCmd));
+    read->ops = 0x020000; // mmc
+    read->offset = offset;
+    read->length = length;
 
-  while (1) {
-    int xfered = 0;
-    int ret = libusb_bulk_transfer(g_usb_dev, LIBUSB_ENDPOINT_IN | 1,
-			       out, length, &xfered, 10000);
-    if(ret != 0)
-      die("OTA read failed: %d", ret);
+    jz_generic_out(VR_READ, 0, (unsigned char *)read, sizeof(ReadCmd));
+    free(read);
 
-    if(xfered == length)
-      break;
-  }
+    while (1)
+    {
+        int xfered = 0;
+        int ret = libusb_bulk_transfer(g_usb_dev, LIBUSB_ENDPOINT_IN | 1,
+                                       out, length, &xfered, 10000);
+        if (ret != 0)
+            die("OTA read failed: %d", ret);
+
+        if (xfered == length)
+            break;
+    }
 }
 
-void mmc_read_partition(uint32_t offset, uint32_t length, const char* fname) {
-  enable_mmc();
-  if(length == 0)
-    die("invalid partition length: %d", length);
-
-  printf("dumping parition at offset 0x%x, size 0x%x\n", offset, length);
-
-  uint32_t chunk_size = 1024 * 1024 * 2; // 2mb
-  unsigned char chunk[chunk_size];
-
-  FILE* f = fopen(fname, "wb");
-  if(f == NULL)
-    die("Can't open file '%s' for writing", fname);
-  
-  uint32_t cursor = offset;
-  uint32_t end = offset + length;
-  while (cursor < end) {
-    uint32_t read_size = (end - cursor) >= chunk_size
-      ? chunk_size
-      : (end - cursor);
-
-    uint32_t start = (uint32_t)time(NULL);
-    mmc_read(cursor, read_size, chunk);
-    uint32_t duration = (uint32_t)time(NULL) - start;
-
-    cursor += read_size;
-
-    printf("%.2f%% completed (%.2fMB/s)\n",
-	   (cursor - offset) / (float)length * 100,
-	   (read_size / 1024 / 1024) / (float)duration);
-
-    if (fwrite(chunk, read_size, 1, f) != 1)
-      die("Failed to write data to %x", fname);
-  }
-
-  fclose(f);
+bool is_mmc_available(void)
+{
+    // Implement logic to check if the MMC is available and accessible
+    // This could involve sending commands to the device and checking the response
+    // or querying the device's status registers
+    // Return true if the MMC is available, false otherwise
+    return true; // Placeholder, replace with actual implementation
 }
 
-void mmc_write(uint32_t offset, uint32_t length, unsigned char* in) {
-  WriteCmd *write = (WriteCmd*) malloc(sizeof(WriteCmd));
-  memset(write, 0, sizeof(WriteCmd));
-  write->ops = 0x020000; // mmc
-  write->offset = offset;
-  write->length = length;
+void mmc_read_partition(uint32_t offset, uint32_t length, const char *fname)
+{
+    printf("Dumping partition at offset %#x, size %#x to file '%s'\n", offset, length, fname);
+    enable_mmc();
+    if (length == 0)
+        die("invalid partition length: %d", length);
 
-  jz_generic_out(VR_WRITE, 0, (unsigned char*)write, sizeof(WriteCmd));
-  free(write);
+    printf("dumping parition at offset 0x%x, size 0x%x\n", offset, length);
 
-  bulk_transfer_out(in, length);
-}
+    uint32_t chunk_size = 1024 * 1024 * 2; // 2mb
+    unsigned char chunk[chunk_size];
 
-void swap_ota_partition(bool force) {
-  ensure_usb();
-  enable_mmc();
+    FILE *f = fopen(fname, "wb");
+    if (f == NULL)
+        die("Can't open file '%s' for writing", fname);
 
-  uint32_t ota_len = 512;
-  unsigned char ota[ota_len];
+    uint32_t cursor = offset;
+    uint32_t end = offset + length;
+    while (cursor < end)
+    {
+        uint32_t read_size = (end - cursor) >= chunk_size
+                                 ? chunk_size
+                                 : (end - cursor);
 
-  mmc_read(0x100000, ota_len, ota);
+        uint32_t start = (uint32_t)time(NULL);
+        mmc_read(cursor, read_size, chunk);
+        uint32_t duration = (uint32_t)time(NULL) - start;
 
-  char ota_in[ota_len];
-  memset(ota_in, 0, ota_len);
-  
-  if (strncmp((char*)ota, "ota:kernel2", 11) == 0) {
-    printf("Current OTA points at kernel2. Switching OTA to kernel\n");
-    strcpy(ota_in, "ota:kernel\n\n");
-  } else if (strncmp((char*)ota, "ota:kernel\n", 11) == 0) {
-    printf("Current OTA points at kernel. Switching OTA to kernel2\n");
-    strcpy(ota_in, "ota:kernel2\n\n");
-  } else {
-    if (!force) {
-      die("Exiting! Your OTA contains unexpected values, swapping OTA might not fix your issue.");
+        cursor += read_size;
+
+        printf("%.2f%% completed (%.2fMB/s)\n",
+               (cursor - offset) / (float)length * 100,
+               (read_size / 1024 / 1024) / (float)duration);
+
+        if (fwrite(chunk, read_size, 1, f) != 1)
+        {
+            fprintf(stderr, "Failed to write data to file '%s'\n", fname);
+            fclose(f);
+            return;
+        }
     }
 
-    printf("Unknown value in OTA. Forcing OTA to use ota:kernel\n");
-    strcpy(ota_in, "ota:kernel\n\n");
-  }
+    fclose(f);
+}
 
-  mmc_write(0x100000, ota_len, (unsigned char*)ota_in);
-  printf("Switched OTA to %s", ota_in);
+void mmc_write(uint32_t offset, uint32_t length, unsigned char *in)
+{
+    WriteCmd *write = (WriteCmd *)malloc(sizeof(WriteCmd));
+    memset(write, 0, sizeof(WriteCmd));
+    write->ops = 0x020000; // mmc
+    write->offset = offset;
+    write->length = length;
+
+    jz_generic_out(VR_WRITE, 0, (unsigned char *)write, sizeof(WriteCmd));
+    free(write);
+
+    bulk_transfer_out(in, length);
+}
+
+void swap_ota_partition(bool force)
+{
+    ensure_usb();
+    enable_mmc();
+
+    uint32_t ota_len = 512;
+    unsigned char ota[ota_len];
+
+    mmc_read(0x100000, ota_len, ota);
+
+    char ota_in[ota_len];
+    memset(ota_in, 0, ota_len);
+
+    if (strncmp((char *)ota, "ota:kernel2", 11) == 0)
+    {
+        printf("Current OTA points at kernel2. Switching OTA to kernel\n");
+        strcpy(ota_in, "ota:kernel\n\n");
+    }
+    else if (strncmp((char *)ota, "ota:kernel\n", 11) == 0)
+    {
+        printf("Current OTA points at kernel. Switching OTA to kernel2\n");
+        strcpy(ota_in, "ota:kernel2\n\n");
+    }
+    else
+    {
+        if (!force)
+        {
+            die("Exiting! Your OTA contains unexpected values, swapping OTA might not fix your issue.");
+        }
+
+        printf("Unknown value in OTA. Forcing OTA to use ota:kernel\n");
+        strcpy(ota_in, "ota:kernel\n\n");
+    }
+
+    mmc_write(0x100000, ota_len, (unsigned char *)ota_in);
+    printf("Switched OTA to %s", ota_in);
 }
 
 /* Default settings */
-struct cpu_profile {
-    const char* name;
+struct cpu_profile
+{
+    const char *name;
     int vid, pid;
     unsigned long s1_load_addr, s1_exec_addr;
     unsigned long s2_load_addr, s2_exec_addr;
@@ -506,18 +568,18 @@ static const struct cpu_profile cpu_profiles[] = {
      0xa108, 0xeaef,
      0xb2401000, 0xb2401800,
      0x80100000, 0x80100000},
-    {NULL}
-};
+    {NULL}};
 
 /* Simple "download and run" functions for dev purposes */
 unsigned long s1_load_addr = 0, s1_exec_addr = 0;
 unsigned long s2_load_addr = 0, s2_exec_addr = 0;
 
-void apply_cpu_profile(const char* name)
+void apply_cpu_profile(const char *name)
 {
-    const struct cpu_profile* p = &cpu_profiles[0];
-    for(p = &cpu_profiles[0]; p->name != NULL; ++p) {
-        if(strcmp(p->name, name) != 0)
+    const struct cpu_profile *p = &cpu_profiles[0];
+    for (p = &cpu_profiles[0]; p->name != NULL; ++p)
+    {
+        if (strcmp(p->name, name) != 0)
             continue;
 
         g_vid = p->vid;
@@ -532,18 +594,18 @@ void apply_cpu_profile(const char* name)
     die("CPU '%s' not known", name);
 }
 
-void run_stage1(const char* filename)
+void run_stage1(const char *filename)
 {
-    if(s1_load_addr == 0 || s1_exec_addr == 0)
+    if (s1_load_addr == 0 || s1_exec_addr == 0)
         die("No stage1 binary settings -- did you specify --cpu?");
     jz_set_data_address(s1_load_addr);
     jz_download(optarg, s2_load_addr);
     jz_program_start1(s1_exec_addr);
 }
 
-void run_stage2(const char* filename)
+void run_stage2(const char *filename)
 {
-    if(s2_load_addr == 0 || s2_exec_addr == 0)
+    if (s2_load_addr == 0 || s2_exec_addr == 0)
         die("No stage2 binary settings -- did you specify --cpu?");
     jz_set_data_address(s2_load_addr);
     jz_download(optarg, s2_load_addr);
@@ -551,10 +613,11 @@ void run_stage2(const char* filename)
     jz_program_start2(s2_exec_addr);
 }
 
-void start_x2000_uboot() {
-  run_stage1("./spl.bin");
-  sleep(1);
-  run_stage2("./uboot.bin");
+void start_x2000_uboot()
+{
+    run_stage1("./spl.bin");
+    sleep(1);
+    run_stage2("./uboot.bin");
 }
 
 /* Main functions */
@@ -587,8 +650,9 @@ Advanced options:\n\
   -v, --verbose      Be verbose\n\
 \n\
 Known CPU types and default stage1/stage2 binary settings:\n");
-    const struct cpu_profile* p = &cpu_profiles[0];
-    for(p = &cpu_profiles[0]; p->name != NULL; ++p) {
+    const struct cpu_profile *p = &cpu_profiles[0];
+    for (p = &cpu_profiles[0]; p->name != NULL; ++p)
+    {
         printf("* %s\n", p->name);
         printf("  - USB ID: %04x:%04x\n", p->vid, p->pid);
         printf("  - Stage1: load %#08lx, exec %#08lx\n",
@@ -602,14 +666,14 @@ Known CPU types and default stage1/stage2 binary settings:\n");
 
 void cleanup()
 {
-    if(g_usb_dev == NULL)
+    if (g_usb_dev == NULL)
         libusb_close(g_usb_dev);
     libusb_exit(NULL);
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-    if(argc <= 1)
+    if (argc <= 1)
         usage();
 
     libusb_init(NULL);
@@ -617,17 +681,24 @@ int main(int argc, char* argv[])
 
     apply_cpu_profile("x2000");
 
-    enum {
-        OPT_VID = 0x100, OPT_PID,
+    enum
+    {
+        OPT_VID = 0x100,
+        OPT_PID,
         OPT_CPUINFO,
-        OPT_START1, OPT_START2, OPT_FLUSH_CACHES,
-        OPT_RENUMERATE, OPT_WAIT, OPT_SWAP_OTA,
-	OPT_FORCE_SWAP_OTA, OPT_DUMP_PARITION,
-	OPT_MMC_WRITE
+        OPT_START1,
+        OPT_START2,
+        OPT_FLUSH_CACHES,
+        OPT_RENUMERATE,
+        OPT_WAIT,
+        OPT_SWAP_OTA,
+        OPT_FORCE_SWAP_OTA,
+        OPT_DUMP_PARITION,
+        OPT_MMC_WRITE
     };
 
     static const struct option long_options[] = {
-        {"uboot", no_argument, 0, 'b'},      
+        {"uboot", no_argument, 0, 'b'},
         {"cpu", required_argument, 0, 'c'},
         {"stage1", required_argument, 0, '1'},
         {"stage2", required_argument, 0, '2'},
@@ -647,21 +718,22 @@ int main(int argc, char* argv[])
         {"wait", required_argument, 0, OPT_WAIT},
         {"swap-ota", no_argument, 0, OPT_SWAP_OTA},
         {"force-swap-ota", no_argument, 0, OPT_FORCE_SWAP_OTA},
-        {"dump-partition", required_argument, 0, OPT_DUMP_PARITION},	
-	{"mmc-write", required_argument, 0, OPT_MMC_WRITE},
+        {"dump-partition", required_argument, 0, OPT_DUMP_PARITION},
+        {"mmc-write", required_argument, 0, OPT_MMC_WRITE},
         {"help", no_argument, 0, 'h'},
         {"verbose", no_argument, 0, 'v'},
-        {0, 0, 0, 0}
-    };
+        {0, 0, 0, 0}};
 
     int opt;
     int data_length = -1;
     uint32_t partition_offset = 0;
     uint32_t partition_size = 0;
-    while((opt = getopt_long(argc, argv, "bhvc:1:2:a:l:s:o:u:d:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "bhvc:1:2:a:l:s:o:u:d:", long_options, NULL)) != -1)
+    {
         unsigned long param;
-        char* end;
-        switch(opt) {
+        char *end;
+        switch (opt)
+        {
         case OPT_VID:
         case OPT_PID:
         case 'a':
@@ -670,28 +742,29 @@ int main(int argc, char* argv[])
         case OPT_START2:
         case OPT_WAIT:
             param = strtoul(optarg, &end, 0);
-            if(*end)
+            if (*end)
                 die("Invalid argument '%s'", optarg);
 
             break;
-	case 's':
+        case 's':
             partition_size = strtoul(optarg, &end, 0);
-            if(*end)
+            if (*end)
                 die("Invalid argument '%s'", optarg);
-	    break;
+            break;
         case 'o':
             partition_offset = strtoul(optarg, &end, 0);
-            if(*end)
+            if (*end)
                 die("Invalid argument '%s'", optarg);
-	    break;
+            break;
         default:
             break;
         }
 
-        switch(opt) {
-	case 'b':
-	    start_x2000_uboot();
-	    break;
+        switch (opt)
+        {
+        case 'b':
+            start_x2000_uboot();
+            break;
         case 'h':
             usage();
             break;
@@ -724,12 +797,12 @@ int main(int argc, char* argv[])
             jz_set_data_length(param);
             break;
         case 'u':
-            if(data_length < 0)
+            if (data_length < 0)
                 die("Need to specify --length before --upload");
             jz_upload(optarg, data_length);
             break;
         case 'd':
-	    jz_download(optarg, s2_load_addr);
+            jz_download(optarg, s2_load_addr);
             break;
         case OPT_START1:
             jz_program_start1(param);
@@ -749,36 +822,36 @@ int main(int argc, char* argv[])
             break;
         case OPT_SWAP_OTA:
             verbose("Swapping OTA between kernel/kernel2");
-	    swap_ota_partition(false);
+            swap_ota_partition(false);
             break;
         case OPT_FORCE_SWAP_OTA:
             verbose("Force OTA to boot ota:kernel");
-	    swap_ota_partition(true);
+            swap_ota_partition(true);
             break;
         case OPT_DUMP_PARITION:
-	    if (partition_size <= 0)
-	      die("must provide a positive partition length with option --partition-size");
+            if (partition_size <= 0)
+                die("must provide a positive partition length with option --partition-size");
         case OPT_MMC_WRITE:
             param = strtoul(optarg, &end, 0);
-            if(*end)
+            if (*end)
                 die("Invalid argument '%s'", optarg);
             jz_mmc_write(partition_offset, param);
             break;
 
             verbose("Dump a partition to file");
-	    mmc_read_partition(partition_offset, partition_size, optarg);
+            mmc_read_partition(partition_offset, partition_size, optarg);
             break;
-	case 'o':
-	case 's':
-	  break;
+        case 'o':
+        case 's':
+            break;
         default:
             /* should only happen due to a bug */
-	    die("Bad option");
-	    break;
+            die("Bad option");
+            break;
         }
     }
 
-    if(optind != argc)
+    if (optind != argc)
         die("Extra arguments on command line");
 
     return 0;
