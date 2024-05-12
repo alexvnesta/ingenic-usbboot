@@ -130,6 +130,7 @@ void jz_set_data_length(unsigned long param);
 void bulk_transfer_out(void *data, int length);
 void mmc_write(uint32_t offset, uint32_t length, unsigned char *in);
 void jz_download(const char *filename, unsigned long load_addr);
+void jz_generic_out(uint8_t op, unsigned long param, unsigned char *data, uint16_t len);
 
 /* Utility functions */
 void die(const char *msg, ...)
@@ -180,7 +181,6 @@ void open_usb(void)
 
 void mmc_write(uint32_t offset, uint32_t length, unsigned char *in)
 {
-    printf("Writing %#x bytes to MMC offset %#x\n", length, offset);
     WriteCmd *write = (WriteCmd *)malloc(sizeof(WriteCmd));
     memset(write, 0, sizeof(WriteCmd));
     write->ops = 0x020000; // mmc
@@ -502,20 +502,6 @@ void mmc_read_partition(uint32_t offset, uint32_t length, const char *fname)
     fclose(f);
 }
 
-void mmc_write(uint32_t offset, uint32_t length, unsigned char *in)
-{
-    WriteCmd *write = (WriteCmd *)malloc(sizeof(WriteCmd));
-    memset(write, 0, sizeof(WriteCmd));
-    write->ops = 0x020000; // mmc
-    write->offset = offset;
-    write->length = length;
-
-    jz_generic_out(VR_WRITE, 0, (unsigned char *)write, sizeof(WriteCmd));
-    free(write);
-
-    bulk_transfer_out(in, length);
-}
-
 void swap_ota_partition(bool force)
 {
     ensure_usb();
@@ -835,7 +821,7 @@ int main(int argc, char *argv[])
             param = strtoul(optarg, &end, 0);
             if (*end)
                 die("Invalid argument '%s'", optarg);
-            jz_mmc_write(partition_offset, param);
+            mmc_write(partition_offset, param);
             break;
 
             verbose("Dump a partition to file");
